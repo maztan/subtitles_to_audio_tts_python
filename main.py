@@ -1,8 +1,10 @@
-from srt_helper import stream_srt
-from tts_api import test_tts
+#from srt_helper import stream_srt
+from tts.plugins.winrt_tts import WinRTTTS
 
 async def main():
-    test_tts()
+    tts = WinRTTTS()
+    audio_data = await tts.synthesize("Hello from Windows WinRT text to speech")
+    
     return
     prev_block = None
     num_small_gaps = 0

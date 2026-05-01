@@ -1,1 +1,6 @@
-pywin32
+#pywin32 not used at the moment
+#comtypes
+winrt-runtime
+winrt-Windows.Media.SpeechSynthesis
+winrt-Windows.Storage.Streams
+pydub
