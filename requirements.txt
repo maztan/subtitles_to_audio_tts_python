@@ -1,6 +1,10 @@
-#pywin32 not used at the moment
+pywin32
 #comtypes
 winrt-runtime
 winrt-Windows.Media.SpeechSynthesis
 winrt-Windows.Storage.Streams
-pydub
+winrt-Windows.Foundation
+winrt-Windows.Foundation.Collections
+google-genai #google AI SDK
+librosa
+soundfile

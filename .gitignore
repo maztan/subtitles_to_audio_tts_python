@@ -50,3 +50,6 @@ Thumbs.db
 
 # Python tooling
 *.log
+
+*.wav
+*.mp3
