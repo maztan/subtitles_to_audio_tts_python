@@ -1,3 +1,5 @@
+from io import BytesIO
+
 from audio_helper import AudioHelper
 from srt_helper import stream_srt
 from tts.plugins.google_gemini_tts import GoogleGeminiTTS
@@ -27,7 +29,8 @@ async def main():
 
     max_count = 10
 
-    tts = GoogleGeminiTTS()
+    #tts = GoogleGeminiTTS()
+    tts = WinRTTTS()
 
     for block in stream_srt(r"C:\Users\savai\Desktop\TorrentDownloads\Kikis Delivery Service (1989) [1080p] [BluRay] [YTS.MX]\Kikis.Delivery.Service.1989.1080p.BluRay.x264.AAC-[YTS.MX].srt"):
         total_blocks += 1
@@ -42,9 +45,21 @@ async def main():
         audio_bytes = await tts.synthesize(block.text)
 
         block_duration = block.end - block.start
-        audio_duration = AudioHelper.get_duration(audio_bytes)
+        audio_duration = AudioHelper.get_duration(BytesIO(audio_bytes))
 
-        print(f"Block duration: {block_duration:.2f} sec, Audio duration: {audio_duration:.2f} sec")
+        # audio bytes matching the block duration (shortened or keept as is)
+        audio_len_matched = BytesIO() # TODO: not the 
+        if AudioHelper.shorten_to_duration(BytesIO(audio_bytes), audio_len_matched, target_duration=block_duration) is False:
+            audio_len_matched = BytesIO(audio_bytes)
+
+
+        #DEBUG:
+        with open("output.wav", "wb") as f:
+            f.write(audio_len_matched.getvalue())
+        #----------
+
+        print(f"Block text: {block.text}")
+        print(f"Block duration: {block_duration:.2f} sec, Audio duration: {audio_duration:.2f} sec\n")
 
         max_count -= 1
         if max_count <= 0:

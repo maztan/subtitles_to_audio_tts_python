@@ -8,9 +8,9 @@ class WinRTTTS(BaseTTS):
 
     def __init__(self):
         self.client = SpeechSynthesizer()
-        voice = self.pick_best_voice()
-        print(f"Selected voice: {voice.display_name} ({voice.language})\n")
-        self.client.voice = voice
+        # voice = self.pick_best_voice()
+        # print(f"Selected voice: {voice.display_name} ({voice.language})\n")
+        # self.client.voice = voice
 
     async def synthesize(self, text) -> bytes:
         stream = await self.client.synthesize_text_to_stream_async(text)
@@ -26,6 +26,7 @@ class WinRTTTS(BaseTTS):
 
         data = reader.read_buffer(size) #read_bytes(stream) , this could reuse the buffer (good idea?)
 
+        print(f"Audio content type: {stream.content_type}, size: {size} bytes")
         reader.close()
         stream.close()
 

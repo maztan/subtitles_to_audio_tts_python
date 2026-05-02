@@ -12,12 +12,15 @@ class AudioHelper:
 
         if rate < 1.0:
             print(f"Audio is shorter than target duration. No processing needed.")
-            return
+            return False
 
         y_stretched = librosa.effects.time_stretch(y, rate=rate)
 
-        sf.write(output_path, y_stretched, sr)
+        #sf.write(output_path, y_stretched, sr)
+        sf.write(output_path, y_stretched, sr, format="WAV") #TODO: format should be the same as input not "WAV"
+
+        return True
 
     @staticmethod
     def get_duration(input_path):
-        return librosa.get_duration(filename=input_path)
+        return librosa.get_duration(path=input_path)
