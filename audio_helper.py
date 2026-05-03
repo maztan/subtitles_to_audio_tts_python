@@ -10,11 +10,14 @@ class AudioHelper:
 
         rate = current_duration / target_duration
 
-        if rate < 1.0:
-            print(f"Audio is shorter than target duration. No processing needed.")
+        if rate <= 1.0:
+            print(f"Audio is not longer than target duration. No processing needed.")
             return False
-
-        y_stretched = librosa.effects.time_stretch(y, rate=rate)
+        
+        D = librosa.stft(y, n_fft=4096, hop_length=1024)
+        D_stretched = librosa.phase_vocoder(D, rate=rate)
+        y_stretched = librosa.istft(D_stretched, hop_length=1024)
+        #y_stretched = librosa.effects.time_stretch(y, rate=rate)
 
         #sf.write(output_path, y_stretched, sr)
         sf.write(output_path, y_stretched, sr, format="WAV") #TODO: format should be the same as input not "WAV"
