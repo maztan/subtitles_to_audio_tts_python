@@ -1,6 +1,7 @@
 from io import BytesIO
 
 from audio_helper import AudioHelper
+from misc_utils import remove_tags, reset_dir
 from srt_helper import stream_srt
 from tts.plugins.google_gemini_tts import GoogleGeminiTTS
 from tts.plugins.sapi_tts import print_sapi_voices
@@ -27,10 +28,12 @@ async def main():
     num_small_gaps = 0
     total_blocks = 0
 
-    max_count = 10
+    count = 0
 
     #tts = GoogleGeminiTTS()
     tts = WinRTTTS()
+
+    reset_dir("audio_output")
 
     for block in stream_srt(r"C:\Users\savai\Desktop\TorrentDownloads\Kikis Delivery Service (1989) [1080p] [BluRay] [YTS.MX]\Kikis.Delivery.Service.1989.1080p.BluRay.x264.AAC-[YTS.MX].srt"):
         total_blocks += 1
@@ -42,27 +45,30 @@ async def main():
         prev_block = block
         #print(block)
 
-        audio_bytes = await tts.synthesize(block.text)
+        clean_text = remove_tags(block.text)
+        audio_bytes = await tts.synthesize(clean_text)
 
         block_duration = block.end - block.start
         audio_duration = AudioHelper.get_duration(BytesIO(audio_bytes))
 
         # audio bytes matching the block duration (shortened or keept as is)
-        audio_len_matched = BytesIO() # TODO: not the 
+        audio_len_matched = BytesIO() # TODO: not the correct approach
         if AudioHelper.shorten_to_duration(BytesIO(audio_bytes), audio_len_matched, target_duration=block_duration) is False:
             audio_len_matched = BytesIO(audio_bytes)
 
+        audio_len_matched.seek(0)
+        new_audio_duration = AudioHelper.get_duration(audio_len_matched)
 
         #DEBUG:
-        with open("output.wav", "wb") as f:
+        with open(f"audio_output/output_{count}.wav", "wb") as f:
             f.write(audio_len_matched.getvalue())
         #----------
 
         print(f"Block text: {block.text}")
-        print(f"Block duration: {block_duration:.2f} sec, Audio duration: {audio_duration:.2f} sec\n")
+        print(f"Block duration: {block_duration:.2f} sec, Audio duration: {audio_duration:.2f} sec, new duration: {new_audio_duration:.2f} sec\n")
 
-        max_count -= 1
-        if max_count <= 0:
+        count += 1
+        if count >= 10:
             break
 
     print(f"Total small gaps found: {num_small_gaps}")
