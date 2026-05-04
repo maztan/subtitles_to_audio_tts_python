@@ -1,4 +1,5 @@
 from io import BytesIO
+import os
 
 from audio_helper import AudioHelper
 from misc_utils import remove_tags, reset_dir
@@ -70,8 +71,19 @@ async def main():
         if count >= 10:
             break
 
+        print("Joining all generated wav files into a single mp3....")
+        wav_paths=[f"audio_output/{f}" for f in sorted(os.listdir("audio_output")) if f.endswith(".wav")]
+        AudioHelper.join_wavs_to_mp3(
+            wav_paths=wav_paths,
+            wav_pauses_sec_between=[2] * (len(wav_paths) - 1),  # 2 second of silence between each file
+            output_mp3="final_output.mp3",
+            silence_seconds=0.5,
+            bitrate=128,
+        )
+
     print(f"Total small gaps found: {num_small_gaps}")
     print(f"Total blocks found: {total_blocks}")
+    print("DONE")
 
 if __name__ == "__main__":
     import asyncio

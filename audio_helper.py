@@ -115,8 +115,10 @@ class AudioHelper:
             sample_rate = probe.getframerate()
             sampwidth   = probe.getsampwidth()   # bytes per sample per channel
 
+        print(f">>> sampwidth: {sampwidth}, sample_rate: {sample_rate}, n_channels: {n_channels}")
+
         # Map wave sampwidth → ffmpeg pcm codec
-        pcm_codec = {1: "pcm_u8", 2: "pcm_s16le", 3: "pcm_s24le", 4: "pcm_s32le"}
+        pcm_codec = {1: "u8", 2: "s16le", 3: "s24le", 4: "s32le"}
         if sampwidth not in pcm_codec:
             raise ValueError(f"Unsupported sample width: {sampwidth} bytes")
 
