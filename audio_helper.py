@@ -4,50 +4,10 @@ from typing import BinaryIO, Tuple
 
 import numpy as np
 import soundfile as sf
-import python_stretch as ps
+import python_stretch
 
 class AudioHelper:
     @staticmethod
-    def shorten_to_duration(input_path: BinaryIO | str | PathLike, output_path, target_duration):
-        audio, sr = sf.read(input_path)
-
-        source_duration = audio.shape[0] # in frames
-        target_duration = int(target_duration * sr)
-        #ratio = source_duration / target_duration
-        ratio = target_duration / source_duration
-
-        if ratio >= 1.0:
-            print(f"Audio is shorter than target duration, no need to shorten. Source duration: {source_duration/sr:.2f} sec, target duration: {target_duration/sr:.2f} sec")
-            return False
-
-        audio =np.asarray(audio, dtype=np.float32)
-        audio = audio[:, None] if audio.ndim == 1 else audio
-        
-        # Assure that "audio" is a 2d array
-        # if (audio.ndim == 1):
-        #     audio = audio[np.newaxis, :]
-
-        # Create a Stretch object
-        stretch = ps.Signalsmith.Stretch()
-        # Configure using a preset
-        num_channels = audio.shape[1] if audio.ndim > 1 else 1
-        stretch.preset(num_channels, sr) # numChannels, sampleRate
-        # Shift up by one octave
-        #stretch.setTransposeSemitones(12)
-        # Stretch time
-        stretch.timeFactor = ratio
-        
-        print(f"Shortening audio from {source_duration/sr:.2f} sec to {target_duration/sr:.2f} sec (ratio: {ratio:.2f})")
-
-        # Process
-        audio_processed = stretch.process(audio)
-       
-        sf.write(output_path, np.squeeze(audio_processed), sr, format="WAV") #TODO: format should be the same as input not "WAV"
-        #sf.write(output_path, y_stretched, sr)
-        #sf.write(output_path, y_stretched, sr, format="WAV") #TODO: format should be the same as input not "WAV"
-
-        return True
-    
     def shorten_to_duration(
         audio_input: BinaryIO,
         target_seconds: float,
@@ -88,7 +48,7 @@ class AudioHelper:
         num_channels = audio_c_first.shape[0]
 
         # --- 3. Configure Signalsmith Stretch --------------------------------
-        stretcher = ps.Signalsmith.Stretch()
+        stretcher = python_stretch.Signalsmith.Stretch()
         stretcher.preset(num_channels, sr)
         stretcher.timeFactor = time_factor          # >1 compresses time (speeds up)
 

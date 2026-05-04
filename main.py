@@ -52,9 +52,8 @@ async def main():
         audio_duration = AudioHelper.get_duration(BytesIO(audio_bytes))
 
         # audio bytes matching the block duration (shortened or keept as is)
-        audio_len_matched = BytesIO() # TODO: not the correct approach
-        if AudioHelper.shorten_to_duration(BytesIO(audio_bytes), audio_len_matched, target_duration=block_duration) is False:
-            audio_len_matched = BytesIO(audio_bytes)
+
+        audio_len_matched, was_shortened = AudioHelper.shorten_to_duration(BytesIO(audio_bytes), target_seconds=block_duration, output_format="WAV")
 
         audio_len_matched.seek(0)
         new_audio_duration = AudioHelper.get_duration(audio_len_matched)
