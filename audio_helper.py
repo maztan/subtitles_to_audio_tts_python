@@ -40,11 +40,15 @@ class AudioHelper:
         # audio shape: (num_samples, num_channels)  — soundfile is channels-last
 
         original_seconds = audio.shape[0] / sr
-        time_factor = original_seconds / target_seconds  # >1 = speed up, <1 = slow down
 
-        if abs(time_factor - 1.0) < 1e-6:          # already the right length
+        if target_seconds + 1e-6 >= original_seconds:          # already the right length (with small tolerance), no need to shorten
             audio_input.seek(0)
             return audio_input, False
+        
+        time_factor = original_seconds / target_seconds  # >1 = speed up, <1 = slow down
+        
+        print(f"time_factor: {time_factor:.6f}")
+        print(f"{abs(time_factor - 1.0)} < {1e-6} -> {abs(time_factor - 1.0) < 1e-6}")
 
         # --- 2. Transpose to (channels, samples) expected by python-stretch --
         audio_c_first = audio.T.copy()            # shape: (channels, samples)
@@ -67,14 +71,16 @@ class AudioHelper:
     @staticmethod
     def get_duration(input_path: BinaryIO | str | PathLike):
         # not the fastest; maybe switch to header decoding for formats that support it (like wav)
+        input_path.seek(0)
         info = sf.info(input_path)
+        input_path.seek(0) # needed?
         return info.frames / info.samplerate
     
     def join_wavs_to_mp3(
         wav_paths: list[str],
         wav_pauses_sec_between: list[float] | None,
         output_mp3: str,
-        silence_seconds: float,
+        silence_seconds: float, #TODO: accept a list here
         bitrate: int = 128,
         chunk_frames: int = 4096,
     ) -> None:
@@ -180,10 +186,13 @@ class AudioHelper:
                 # Insert silence between files (not after the last one)
                 if wav_pauses_sec_between is not None and file_index < len(paths) - 1:
                     silence_seconds = wav_pauses_sec_between[file_index]
-                    silence_frames = int(math.ceil(silence_seconds * sample_rate))
-                    silence_block  = b"\x00" * (silence_frames * n_channels * sampwidth)
+                    assert silence_seconds >= 0, "silence_seconds must be non-negative"
                     
-                    feed(silence_block)
+                    if silence_seconds != 0:
+                        silence_frames = int(math.ceil(silence_seconds * sample_rate))
+                        silence_block  = b"\x00" * (silence_frames * n_channels * sampwidth)
+                        
+                        feed(silence_block)
 
             proc.stdin.close()
             proc.wait()
