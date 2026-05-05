@@ -16,3 +16,5 @@ pip install "py3-tts-wrapper[mp3]"
 
 TODO: merge subs with small gaps between
 the audio resulting from merged blocks can take entire time from start to end of merged blocks
+
+TODO: consider adding https://github.com/rany2/edge-tts

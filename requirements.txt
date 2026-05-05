@@ -9,3 +9,4 @@ google-genai #google AI SDK
 #librosa
 soundfile
 python-stretch
+python-dotenv

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from io import BytesIO
+import os
 import wave
 
 from google import genai
@@ -9,7 +10,7 @@ from tts.tts_api_base import BaseTTS, tts_plugin
 class GoogleGeminiTTS(BaseTTS):
 
     def __init__(self):
-        self.client = genai.Client(api_key="AIzaSyC3G-xaSMlc2uQdF6eTPPUaMbMlA2XHURw")
+        self.client = genai.Client(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
 
     async def synthesize(self, text) -> bytes:
         response = self.client.models.generate_content(

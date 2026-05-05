@@ -80,7 +80,6 @@ class AudioHelper:
         wav_paths: list[str],
         wav_pauses_sec_between: list[float] | None,
         output_mp3: str,
-        silence_seconds: float, #TODO: accept a list here
         bitrate: int = 128,
         chunk_frames: int = 4096,
     ) -> None:
@@ -95,8 +94,6 @@ class AudioHelper:
                               Must have length one less than wav_paths (i.e. no pause after the last file).
                               If None, no silence will be inserted between files.
             output_mp3:      Destination .mp3 file path.
-            silence_seconds: Seconds of silence to insert between consecutive files
-                            (can be fractional, e.g. 0.5 or 2.75).
             bitrate:         MP3 bitrate in kbps (default: 128).
             chunk_frames:    PCM frames read per iteration (controls RAM usage).
 
