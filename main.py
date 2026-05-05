@@ -3,7 +3,7 @@ import os
 
 from audio_helper import AudioHelper
 from misc_utils import remove_tags, reset_dir
-from srt_helper import stream_srt
+from srt_helper import SubtitleBlock, stream_srt
 from tts.plugins.google_gemini_tts import GoogleGeminiTTS
 from tts.plugins.sapi_tts import print_sapi_voices
 from tts.plugins.winrt_tts import WinRTTTS
@@ -36,6 +36,62 @@ async def main():
 
     reset_dir("audio_output")
 
+#------------------
+
+    async def process_block(block: SubtitleBlock, output_path: str):
+        clean_text = remove_tags(block.text)
+        audio_bytes = await tts.synthesize(clean_text)
+
+        block_duration = block.end - block.start
+        audio_duration = AudioHelper.get_duration(BytesIO(audio_bytes))
+
+        # audio bytes matching the block duration (shortened or keept as is)
+
+        audio_len_matched, was_shortened = AudioHelper.shorten_to_duration(BytesIO(audio_bytes), target_seconds=block_duration, output_format="WAV")
+
+        audio_len_matched.seek(0)
+        new_audio_duration = AudioHelper.get_duration(audio_len_matched)
+
+        #DEBUG:
+        #with open(f"audio_output/output_{count}.wav", "wb") as f:
+        with open(output_path, "wb") as f:
+            f.write(audio_len_matched.getvalue())
+        #----------
+
+        print(f"Block text: {block.text}")
+        print(f"Block duration: {block_duration:.2f} sec, Audio duration: {audio_duration:.2f} sec, new duration: {new_audio_duration:.2f} sec\n")
+
+
+    max_gap_seconds = 1.0
+    prev_block = None
+    output_path_template = "audio_output/output_{}.wav"
+
+    for block in [SubtitleBlock()]:
+        if prev_block is not None:
+            # If the gap between blocks is small, merge them
+            if prev_block.end + max_gap_seconds > block.start:
+                prev_block.end = block.end  # Extend the previous block's end time to merge with the current block
+                prev_block.text += " " + block.text
+                # count stays the same since we are merging into the previous block
+            else:
+                # Process the previous block (synthesize audio)
+                process_block(prev_block, output_path_template.format(count))
+                prev_block = block
+                count += 1
+        else:
+            prev_block = block
+    
+    # prev_block, if it exists, is not processed
+    # as it could have been assigned only when there was a next block
+    # or there was only one block in total
+    # in both cases, it was not processed at this point.
+    if prev_block is not None:
+        process_block(prev_block, output_path_template.format(count))
+    else:
+        print("WARNING:No subtitle blocks found to process.")
+#------------------
+
+    count = 0
     for block in stream_srt(r"C:\Users\savai\Desktop\TorrentDownloads\Kikis Delivery Service (1989) [1080p] [BluRay] [YTS.MX]\Kikis.Delivery.Service.1989.1080p.BluRay.x264.AAC-[YTS.MX].srt"):
         total_blocks += 1
         if prev_block is not None:
