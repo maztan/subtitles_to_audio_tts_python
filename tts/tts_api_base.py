@@ -43,9 +43,12 @@ class BaseTTS(ABC):
     """Abstract base class for text-to-speech engines."""
 
     @abstractmethod
-    async def synthesize(self, text: str) -> bytes:
+    async def synthesize(self, text: str) -> tuple[bytes, str]:
         """
         Convert text to speech.
+
+        Returns:
+            A tuple containing the audio data as bytes and the audio format (e.g., "WAV", "MP3").
         """
         pass
 

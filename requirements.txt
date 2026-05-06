@@ -10,3 +10,4 @@ google-genai #google AI SDK
 soundfile
 python-stretch
 python-dotenv
+edge-tts # experimental and not reliable for production, we can use it as long as it works

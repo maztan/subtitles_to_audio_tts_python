@@ -203,3 +203,55 @@ class AudioHelper:
         if proc.returncode != 0:
             stderr = proc.stderr.read().decode(errors="replace")
             raise RuntimeError(f"ffmpeg exited with code {proc.returncode}:\n{stderr}")
+
+    @staticmethod
+    def mp3_to_wav(mp3_bytes: bytes) -> bytes:
+
+        # mp3 is self explanatory format, so ffmpeg can auto-detect it from the header; no need to specify -f mp3 or similar
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",    "pipe:0",      # MP3 in from stdin
+            "-f",    "wav",
+            "pipe:1",               # WAV out to stdout
+        ]
+
+        proc = subprocess.Popen(
+            ffmpeg_cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        #try block in python is not a scope; variables are accessible after the block
+        try:
+            wav_data, err = proc.communicate(mp3_bytes)
+        except BrokenPipeError:
+            stderr = proc.stderr.read().decode(errors="replace")
+            raise RuntimeError(f"ffmpeg pipe broke:\n{stderr}")
+
+        if proc.returncode != 0:
+            raise RuntimeError(f"ffmpeg failed:\n{err.decode(errors='replace')}") 
+
+        return wav_data
+
+        #---------------------
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-y",                              # overwrite output
+            "-f",          pcm_codec[sampwidth],
+            "-ar",         str(sample_rate),
+            "-ac",         str(n_channels),
+            "-i",          "pipe:0",           # read PCM from stdin
+            "-c:a",        "libmp3lame",
+            "-b:a",        f"{bitrate}k",
+            output_mp3,
+        ]
+
+        def feed(data: bytes) -> None:
+            """Write bytes to ffmpeg stdin, propagating broken-pipe errors clearly."""
+            try:
+                proc.stdin.write(data)
+            except BrokenPipeError:
+                stderr = proc.stderr.read().decode(errors="replace")
+                raise RuntimeError(f"ffmpeg pipe broke:\n{stderr}")

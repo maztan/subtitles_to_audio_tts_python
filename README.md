@@ -18,3 +18,5 @@ TODO: merge subs with small gaps between
 the audio resulting from merged blocks can take entire time from start to end of merged blocks
 
 TODO: consider adding https://github.com/rany2/edge-tts
+
+TODO: semantic subtitle splitting, not based on blocks; this would need "full sentence detection", probably can be done with a language model (aka "AI")

@@ -12,7 +12,7 @@ class GoogleGeminiTTS(BaseTTS):
     def __init__(self):
         self.client = genai.Client(api_key=os.getenv("GOOGLE_GEMINI_API_KEY"))
 
-    async def synthesize(self, text) -> bytes:
+    async def synthesize(self, text) -> tuple[bytes, str]:
         response = self.client.models.generate_content(
             model="gemini-2.5-flash-preview-tts",
             contents=text,
@@ -34,7 +34,7 @@ class GoogleGeminiTTS(BaseTTS):
         
         buff = BytesIO()
         self.pcm_to_wav(audio_bytes, mime_info, buff)
-        return buff.getvalue()
+        return buff.getvalue(), "WAV"
 
     def list_models(self):
         models = self.client.models.list()

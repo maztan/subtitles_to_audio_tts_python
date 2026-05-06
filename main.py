@@ -4,16 +4,18 @@ import os
 from audio_helper import AudioHelper
 from misc_utils import remove_tags, reset_dir
 from srt_helper import SubtitleBlock, stream_srt
+
 from tts.plugins.google_gemini_tts import GoogleGeminiTTS
 from tts.plugins.sapi_tts import print_sapi_voices
 from tts.plugins.winrt_tts import WinRTTTS
+from tts.plugins.msedge_tts import MSEdgeTTS
 
 from dotenv import load_dotenv
 load_dotenv()
 
 async def main():
     # tts = WinRTTTS()
-    # audio_data = await tts.synthesize("Hello from Windows WinRT text to speech")
+    # audio_data, audio_format = await tts.synthesize("Hello from Windows WinRT text to speech")
     # mp3_bytes = tts.wav_to_mp3(audio_data)
 
     # with open("output.mp3", "wb") as f:
@@ -29,9 +31,20 @@ async def main():
 #----------------------
 
     #tts = GoogleGeminiTTS()
-    tts = WinRTTTS()
+    #tts = WinRTTTS()
+    tts = MSEdgeTTS()
+
+    #await tts.list_voices()
+    #return
 
     reset_dir("audio_output")
+
+    #TEST
+    # audio_bytes, audio_format = await tts.synthesize("This is a test of the text to speech API.")
+    # with open(f"audio_output/test.{audio_format.lower()}", "wb") as f:
+    #     f.write(audio_bytes)
+    # print(f"Test synthesis complete, audio saved to audio_output/test.{audio_format.lower()}")
+    # return
 
 #------------------
 
@@ -43,7 +56,16 @@ async def main():
             The duration of the synthesized audio in seconds.
         """
         clean_text = remove_tags(block.text)
-        audio_bytes = await tts.synthesize(clean_text)
+        audio_bytes, audio_format = await tts.synthesize(clean_text)
+
+        #---------------------
+        # convert to wav if necessary; we can only add silence if we have wav (pcm) audio
+        if(audio_format != "WAV"):
+            print(f"Converting synthesized audio from {audio_format} to WAV format for block {count}...")
+            if audio_format == "MP3":
+                audio_bytes = AudioHelper.mp3_to_wav(audio_bytes)
+            else:
+                raise ValueError(f"Unsupported audio format: {audio_format}")
 
         block_duration = block.end - block.start
         #audio_duration = AudioHelper.get_duration(BytesIO(audio_bytes))
@@ -72,6 +94,8 @@ async def main():
     count = 0
     total_input_blocks = 0
     total_merged_blocks = 0
+
+    output_audio_paths = []
     silences_after_blocks = [] # no silence after the last (TODO:OR BEFORE FIRST BLOCK? - maybe add the before??)
 
     DEBUG_MAX_COUNT = 10
@@ -81,7 +105,6 @@ async def main():
 
         total_input_blocks += 1
         #TODO: add max consecutive blocks merged?
-        #TODO: AUDIO LENGHT DOES NOT MATCH THE BLOCK DURATION
         if prev_block is not None:
             # Check for (wrong) overlapping blocks (negative gap)
             if prev_block.end > block.start:
@@ -98,10 +121,13 @@ async def main():
                 # count stays the same since we are merging into the previous block
             else:
                 # Process the previous block (synthesize audio)
-                audio_duration = await process_block(prev_block, output_path_template.format(count))
+                output_path = output_path_template.format(count)
+                audio_duration = await process_block(prev_block, output_path)
+                output_audio_paths.append(output_path)
 
-                # The difference in seconds between block length and the corresponding audio lenght (meaning, how much silenece we need after this block)
-                diff_subtitle_audio = (prev_block.end - prev_block.start) - audio_duration
+                # we need to fill with audio the space aof entire block + the gap until the next block
+                # to keep audio in sync thus we need to pad with silence until the start of the next block 
+                diff_subtitle_audio = block.end - (prev_block.start + audio_duration)
                 if diff_subtitle_audio < 0:
                     print(f"WARNING: Audio duration is longer than subtitle block duration by {diff_subtitle_audio:.2f} seconds. Consider reviewing the SRT file for potential errors.")
                     diff_subtitle_audio = 0 #reset to zero toavoid negative silence length value
@@ -124,18 +150,19 @@ async def main():
     if prev_block is None:
         print("WARNING: No subtitle blocks found to process.")
     else:
-        audio_duration = await process_block(prev_block, output_path_template.format(count))
+        output_path = output_path_template.format(count)
+        audio_duration = await process_block(prev_block, output_path)
+        output_audio_paths.append(output_path)
         # no silence after the last block, so we don't push to silences_after_blocks
 
         print("Joining all generated wav files into a single mp3....")
-        #FIXME: wav_paths should be created with the silence length slist to make sure the order is correct
-        wav_paths=[f"audio_output/{f}" for f in sorted(os.listdir("audio_output")) if f.endswith(".wav")]
+        #wav_paths=[f"audio_output/{f}" for f in sorted(os.listdir("audio_output")) if f.endswith(".wav")]
 
-        assert len(wav_paths) == len(silences_after_blocks) + 1, f"Number of wav files ({len(wav_paths)}) should be one more than the number of silences ({len(silences_after_blocks)}) since there is no silence after the last block."
+        assert len(output_audio_paths) == len(silences_after_blocks) + 1, f"Number of wav files ({len(output_audio_paths)}) should be one more than the number of silences ({len(silences_after_blocks)}) since there is no silence after the last block."
 
         AudioHelper.join_wavs_to_mp3(
-            wav_paths=wav_paths,
-            wav_pauses_sec_between= silences_after_blocks, #[2] * (len(wav_paths) - 1),  # 2 second of silence between each file
+            wav_paths=output_audio_paths,
+            wav_pauses_sec_between=silences_after_blocks, #[2] * (len(wav_paths) - 1),  # 2 second of silence between each file
             output_mp3="final_output.mp3",
             bitrate=128,
         )

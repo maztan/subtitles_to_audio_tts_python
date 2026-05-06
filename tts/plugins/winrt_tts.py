@@ -12,7 +12,7 @@ class WinRTTTS(BaseTTS):
         # print(f"Selected voice: {voice.display_name} ({voice.language})\n")
         # self.client.voice = voice
 
-    async def synthesize(self, text) -> bytes:
+    async def synthesize(self, text) -> tuple[bytes, str]:
         stream = await self.client.synthesize_text_to_stream_async(text)
 
          # Get the underlying input stream
@@ -30,7 +30,7 @@ class WinRTTTS(BaseTTS):
         reader.close()
         stream.close()
 
-        return bytes(data)
+        return bytes(data), "WAV"
 
     def wav_to_mp3(self, wav_data: bytes) -> bytes:
         p = subprocess.Popen(
