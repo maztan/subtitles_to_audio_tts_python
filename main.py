@@ -89,8 +89,6 @@ async def main():
 
     # log file holding information about how the blocks were converted to audio
     # and the timings of the audio and sileneces placed
-    processing_log_file = open("processing_log_file.log", "w", buffering=1024)  # 8KB buffer
-    processing_log_file.write("some message\n")
     
     # if gap is shorter than this, the blocks will be merged before synthesizing of audio
     MERGE_NEARBY_BLOCKS = False
@@ -125,7 +123,7 @@ async def main():
                 total_merged_blocks += 1
                 # count stays the same since we are merging into the previous block
                 #update log
-                processing_log_file.write(f"blocks merged: new blocks span {prev_block.start} -> {prev_block.end}\n");
+                print(f"blocks merged: new blocks span {prev_block.start} -> {prev_block.end}\n");
             else:
                 # Process the previous block (synthesize audio)
                 output_path = output_path_template.format(count)
@@ -143,8 +141,6 @@ async def main():
 
                 print(f"Otput block {count} text: {block.text}")
                 print(f"Otput block {count} duration: {prev_block.end - prev_block.start:.2f} sec, out audio duration: {audio_duration:.2f} sec, silence: {diff_subtitle_audio:.2f} sec (total: {audio_duration + diff_subtitle_audio:.2f} ?= block time till next block {block.start - prev_block.start:.2f} sec)\n")
-
-                processing_log_file.write(f"block processed: block span {prev_block.start} -> {prev_block.end} ({prev_block.end - prev_block.start:.2f} sec), audio duration: {audio_duration:.2f} + silence: {diff_subtitle_audio:.2f} ({audio_duration + diff_subtitle_audio:.2f} sec)\n")
 
                 prev_block = block
                 count += 1
@@ -168,11 +164,9 @@ async def main():
         output_audio_paths.append(output_path)
 
         print(f"Otput block {count} text: {block.text}")
-        print(f"Otput block {count} duration: {prev_block.end - prev_block.start:.2f} sec, out audio duration: {audio_duration:.2f} sec\n")
+        print(f"Otput block {count} span {prev_block.start} -> {prev_block.end} duration: {prev_block.end - prev_block.start:.2f} sec, out audio duration: {audio_duration:.2f} sec\n")
         block_i += 1
         # no silence after the last block, so we don't push to silences_after_blocks
-
-        processing_log_file.write(f"block processed: block span {prev_block.start} -> {prev_block.end} ({prev_block.end - prev_block.start:.2f} sec), no silence after")
 
         FINAL_OUTPUT_FILE_NAME = "final_output.mp3"
         print(f"Joining all generated wav files into a single mp3 {FINAL_OUTPUT_FILE_NAME}....")
@@ -188,8 +182,7 @@ async def main():
         )
 
     print(f"Total input blocks found: {block_i} (of which {total_merged_blocks} were merged due to short gaps)")
-    
-    processing_log_file.flush()
+
     print("DONE")
 
 if __name__ == "__main__":
