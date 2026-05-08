@@ -142,7 +142,7 @@ async def main():
                 silences_after_blocks.append(diff_subtitle_audio)
 
                 print(f"Otput block {count} text: {block.text}")
-                print(f"Otput block {count} duration: {prev_block.end - prev_block.start:.2f} sec, out audio duration: {audio_duration:.2f} sec, silence: {diff_subtitle_audio:.2f} sec (total: {audio_duration + diff_subtitle_audio:.2f} sec)\n")
+                print(f"Otput block {count} duration: {prev_block.end - prev_block.start:.2f} sec, out audio duration: {audio_duration:.2f} sec, silence: {diff_subtitle_audio:.2f} sec (total: {audio_duration + diff_subtitle_audio:.2f} ?= block time till next block {block.start - prev_block.start:.2f} sec)\n")
 
                 processing_log_file.write(f"block processed: block span {prev_block.start} -> {prev_block.end} ({prev_block.end - prev_block.start:.2f} sec), audio duration: {audio_duration:.2f} + silence: {diff_subtitle_audio:.2f} ({audio_duration + diff_subtitle_audio:.2f} sec)\n")
 
