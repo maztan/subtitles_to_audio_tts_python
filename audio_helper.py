@@ -187,8 +187,10 @@ class AudioHelper:
                     
                     if silence_seconds != 0:
                         silence_frames = int(math.ceil(silence_seconds * sample_rate))
-                        silence_block  = b"\x00" * (silence_frames * n_channels * sampwidth)
-                        
+                        # for u8 (sampwidth=1) — unsigned 8-bit silence is 0x80 (128), not 0x00
+                        silence_byte = b"\x80" if sampwidth == 1 else b"\x00"
+                        silence_block  = silence_byte * (silence_frames * n_channels * sampwidth)
+
                         feed(silence_block)
 
             proc.stdin.close()

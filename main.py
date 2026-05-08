@@ -83,27 +83,32 @@ async def main():
 
         out_audio_duration = AudioHelper.get_duration(audio_len_matched)
 
-        print(f"Otput block {count} text: {block.text}")
-        print(f"Otput block {count} duration: {block_duration:.2f} sec, out audio duration: {out_audio_duration:.2f} sec\n")
+        #if __debug__:
 
         return out_audio_duration
 
-    max_gap_seconds = 1.0
+    # log file holding information about how the blocks were converted to audio
+    # and the timings of the audio and sileneces placed
+    processing_log_file = open("processing_log_file.log", "w", buffering=1024)  # 8KB buffer
+    processing_log_file.write("some message\n")
+    
+    # if gap is shorter than this, the blocks will be merged before synthesizing of audio
+    MERGE_NEARBY_BLOCKS = False
+    MAX_GAP_SECONDS = 0.5
+
     prev_block = None
     output_path_template = "audio_output/output_{}.wav"
     count = 0
-    total_input_blocks = 0
     total_merged_blocks = 0
 
     output_audio_paths = []
     silences_after_blocks = [] # no silence after the last (TODO:OR BEFORE FIRST BLOCK? - maybe add the before??)
 
-    DEBUG_MAX_COUNT = 10
-    i = 0
+    print("Will try to merge nearby blocks with gap shorter than ", MAX_GAP_SECONDS, " seconds") if MERGE_NEARBY_BLOCKS else print("Will not merge nearby blocks")
+    
+    DEBUG_MAX_COUNT = 20
+    block_i = 0
     for block in stream_srt(r"C:\Users\savai\Desktop\TorrentDownloads\Kikis Delivery Service (1989) [1080p] [BluRay] [YTS.MX]\Kikis.Delivery.Service.1989.1080p.BluRay.x264.AAC-[YTS.MX].srt"):
-        i += 1
-
-        total_input_blocks += 1
         #TODO: add max consecutive blocks merged?
         if prev_block is not None:
             # Check for (wrong) overlapping blocks (negative gap)
@@ -114,34 +119,42 @@ async def main():
                 continue
 
             # If the gap between blocks is small, merge them
-            if prev_block.end + max_gap_seconds > block.start:
+            if MERGE_NEARBY_BLOCKS and prev_block.end + MAX_GAP_SECONDS > block.start:
                 prev_block.end = block.end  # Extend the previous block's end time to merge with the current block
                 prev_block.text += " " + block.text
                 total_merged_blocks += 1
                 # count stays the same since we are merging into the previous block
+                #update log
+                processing_log_file.write(f"blocks merged: new blocks span {prev_block.start} -> {prev_block.end}\n");
             else:
                 # Process the previous block (synthesize audio)
                 output_path = output_path_template.format(count)
                 audio_duration = await process_block(prev_block, output_path)
                 output_audio_paths.append(output_path)
 
-                # we need to fill with audio the space aof entire block + the gap until the next block
+                # we need to fill with audio the space of entire block + the gap until the next block
                 # to keep audio in sync thus we need to pad with silence until the start of the next block 
-                diff_subtitle_audio = block.end - (prev_block.start + audio_duration)
+                diff_subtitle_audio = block.start - (prev_block.start + audio_duration)
                 if diff_subtitle_audio < 0:
                     print(f"WARNING: Audio duration is longer than subtitle block duration by {diff_subtitle_audio:.2f} seconds. Consider reviewing the SRT file for potential errors.")
                     diff_subtitle_audio = 0 #reset to zero toavoid negative silence length value
                 
                 silences_after_blocks.append(diff_subtitle_audio)
 
+                print(f"Otput block {count} text: {block.text}")
+                print(f"Otput block {count} duration: {prev_block.end - prev_block.start:.2f} sec, out audio duration: {audio_duration:.2f} sec, silence: {diff_subtitle_audio:.2f} sec (total: {audio_duration + diff_subtitle_audio:.2f} sec)\n")
+
+                processing_log_file.write(f"block processed: block span {prev_block.start} -> {prev_block.end} ({prev_block.end - prev_block.start:.2f} sec), audio duration: {audio_duration:.2f} + silence: {diff_subtitle_audio:.2f} ({audio_duration + diff_subtitle_audio:.2f} sec)\n")
+
                 prev_block = block
                 count += 1
         else:
             prev_block = block
 
-        if i >= DEBUG_MAX_COUNT:
+        if block_i >= DEBUG_MAX_COUNT:
             print(f"DEBUG: Reached max count of {DEBUG_MAX_COUNT}, stopping subtitle processing.")
             break
+        block_i += 1
     
     # prev_block, if it exists, is not processed
     # as it could have been assigned only when there was a next block
@@ -153,9 +166,16 @@ async def main():
         output_path = output_path_template.format(count)
         audio_duration = await process_block(prev_block, output_path)
         output_audio_paths.append(output_path)
+
+        print(f"Otput block {count} text: {block.text}")
+        print(f"Otput block {count} duration: {prev_block.end - prev_block.start:.2f} sec, out audio duration: {audio_duration:.2f} sec\n")
+        block_i += 1
         # no silence after the last block, so we don't push to silences_after_blocks
 
-        print("Joining all generated wav files into a single mp3....")
+        processing_log_file.write(f"block processed: block span {prev_block.start} -> {prev_block.end} ({prev_block.end - prev_block.start:.2f} sec), no silence after")
+
+        FINAL_OUTPUT_FILE_NAME = "final_output.mp3"
+        print(f"Joining all generated wav files into a single mp3 {FINAL_OUTPUT_FILE_NAME}....")
         #wav_paths=[f"audio_output/{f}" for f in sorted(os.listdir("audio_output")) if f.endswith(".wav")]
 
         assert len(output_audio_paths) == len(silences_after_blocks) + 1, f"Number of wav files ({len(output_audio_paths)}) should be one more than the number of silences ({len(silences_after_blocks)}) since there is no silence after the last block."
@@ -163,11 +183,13 @@ async def main():
         AudioHelper.join_wavs_to_mp3(
             wav_paths=output_audio_paths,
             wav_pauses_sec_between=silences_after_blocks, #[2] * (len(wav_paths) - 1),  # 2 second of silence between each file
-            output_mp3="final_output.mp3",
+            output_mp3=FINAL_OUTPUT_FILE_NAME,
             bitrate=128,
         )
 
-    print(f"Total input blocks found: {total_input_blocks} (of which {total_merged_blocks} were merged due to short gaps)")
+    print(f"Total input blocks found: {block_i} (of which {total_merged_blocks} were merged due to short gaps)")
+    
+    processing_log_file.flush()
     print("DONE")
 
 if __name__ == "__main__":

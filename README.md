@@ -22,3 +22,5 @@ TODO: consider adding https://github.com/rany2/edge-tts
 TODO: semantic subtitle splitting, not based on blocks; this would need "full sentence detection", probably can be done with a language model (aka "AI")
 
 TODO: write debug of audio blocks starts and ends and where the pauses were inserted and how long they were
+
+FIXME: total_input_blocks is not equal (one more than the num of files produced)
